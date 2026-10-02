@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<meta name="description" content="Comprueba el tamaño de tus PNG (16×16 o 25×25) y guárdalos como BMP. Todo en tu navegador.">
+<title>PNG → BMP · 16×16 / 25×25</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+
+  :root{
+    --bg:#0f1117;
+    --card:#171a23;
+    --card2:#1b1f2a;
+    --line:#272c3a;
+    --txt:#e9edf5;
+    --muted:#96a0b5;
+    --acc:#5b8cff;
+    --acc2:#8fb0ff;
+    --ok:#37d399;
+    --warn:#ffb020;
+    --err:#ff6b6b;
+    --r:14px;
+  }
+
+  html,body{margin:0;padding:0}
+
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(900px 420px at 50% -160px, #1d2740 0%, rgba(29,39,64,0) 70%),
+      var(--bg);
+    color:var(--txt);
+    font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;
+    -webkit-tap-highlight-color:transparent;
+    padding:18px 14px calc(36px + env(safe-area-inset-bottom));
+  }
+
+  .wrap{max-width:880px;margin:0 auto}
+
+  /* ---------- Cabecera ---------- */
+  .head{text-align:center;margin:6px 0 22px}
+  .head h1{
+    margin:0 0 8px;
+    font-size:clamp(1.2rem,4.8vw,1.8rem);
+    line-height:1.25;
+    letter-spacing:-.02em;
+    font-weight:700;
+  }
+  .head h1 span{color:var(--acc2)}
+  .head p{margin:0 auto;max-width:46ch;color:var(--muted);font-size:.9rem}
+
+  /* ---------- Zona de carga ---------- */
+  .drop{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:30px 18px;
+    border:2px dashed var(--line);
+    border-radius:var(--r);
+    background:linear-gradient(180deg,#161a24,#131720);
+    text-align:center;cursor:pointer;
+    transition:border-color .18s, background .18s, transform .12s;
+    user-select:none;
+  }
+  .drop:hover,.drop:focus-visible{border-color:var(--acc);background:#181d2a;outline:none}
+  .drop.over{border-color:var(--acc);background:#1b2333;transform:scale(1.01)}
+  .drop svg{width:38px;height:38px;stroke:var(--acc2);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .drop strong{font-size:1rem;font-weight:600}
+  .drop span{font-size:.82rem;color:var(--muted);max-width:34ch}
+
+  /* ---------- Tarjetas ---------- */
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    padding:16px;
+  }
+
+  #result{display:flex;flex-direction:column;gap:14px;margin-top:16px}
+  #result[hidden]{display:none}
+
+  /* ---------- Imagen original ---------- */
+  .origRow{display:flex;gap:14px;align-items:center}
+  .thumb{
+    flex:0 0 auto;width:72px;height:72px;border-radius:12px;
+    border:1px solid var(--line);overflow:hidden;
+    display:grid;place-items:center;
+  }
+  .thumb canvas{display:block;width:72px;height:72px}
+  .meta{min-width:0;flex:1}
+  .fname{
+    font-weight:600;font-size:.95rem;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .dims{color:var(--muted);font-size:.85rem;margin-top:2px;font-variant-numeric:tabular-nums}
+
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;
+    margin-top:8px;padding:4px 10px;border-radius:999px;
+    font-size:.76rem;font-weight:600;letter-spacing:.01em;
+  }
+  .badge.ok{background:rgba(55,211,153,.14);color:var(--ok);border:1px solid rgba(55,211,153,.3)}
+  .badge.warn{background:rgba(255,176,32,.13);color:var(--warn);border:1px solid rgba(255,176,32,.3)}
+
+  .note{margin:12px 0 0;font-size:.85rem;color:var(--muted);line-height:1.45}
+  .note b{color:var(--txt);font-weight:600}
+
+  /* ---------- Opciones ---------- */
+  .options{
+    display:flex;flex-wrap:wrap;gap:10px 20px;
+    padding:13px 16px;
+  }
+  .chk{
+    display:inline-flex;align-items:center;gap:9px;
+    font-size:.85rem;color:var(--muted);cursor:pointer;
+    padding:5px 0;min-height:34px;
+  }
+  .chk input{
+    appearance:none;-webkit-appearance:none;
+    width:20px;height:20px;flex:0 0 auto;margin:0;
+    border:1.5px solid #39415a;border-radius:6px;
+    background:#12151d;cursor:pointer;position:relative;
+    transition:.15s;
+  }
+  .chk input:checked{background:var(--acc);border-color:var(--acc)}
+  .chk input:checked::after{
+    content:"";position:absolute;left:6px;top:2px;
+    width:5px;height:10px;
+    border:solid #fff;border-width:0 2px 2px 0;
+    transform:rotate(45deg);
+  }
+  .chk input:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+  .chk span{color:var(--txt)}
+
+  /* ---------- Paneles de previsualización ---------- */
+  .grid{display:grid;gap:14px;grid-template-columns:1fr}
+  @media (min-width:580px){ .grid{grid-template-columns:1fr 1fr} }
+
+  .panel{display:flex;flex-direction:column;gap:12px}
+  .pHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pHead h2{margin:0;font-size:1rem;font-weight:700;letter-spacing:.02em}
+  .tag{
+    font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:3px 9px;border-radius:999px;
+    background:#222838;color:var(--muted);border:1px solid var(--line);
+    white-space:nowrap;
+  }
+  .tag.ok{background:rgba(55,211,153,.13);color:var(--ok);border-color:rgba(55,211,153,.28)}
+  .tag.warn{background:rgba(255,176,32,.12);color:var(--warn);border-color:rgba(255,176,32,.28)}
+
+  .preview{
+    width:100%;max-width:230px;margin:0 auto;
+    aspect-ratio:1/1;
+    border-radius:12px;border:1px solid var(--line);
+    overflow:hidden;
+  }
+  .preview canvas{
+    display:block;width:100%;height:100%;
+    image-rendering:pixelated;
+    image-rendering:-moz-crisp-edges;
+    image-rendering:crisp-edges;
+  }
+
+  /* Fondo de tablero (transparencia) */
+  .checker{
+    background-color:#1b1f2a;
+    background-image:
+      linear-gradient(45deg,#272d3c 25%,transparent 25%),
+      linear-gradient(-45deg,#272d3c 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#272d3c 75%),
+      linear-gradient(-45deg,transparent 75%,#272d3c 75%);
+    background-size:16px 16px;
+    background-position:0 0,0 8px,8px -8px,-8px 0;
+  }
+
+  /* ---------- Botones ---------- */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    min-height:48px;padding:12px 18px;
+    font:inherit;font-size:.92rem;font-weight:600;
+    color:#fff;background:var(--acc);
+    border:1px solid transparent;border-radius:11px;
+    cursor:pointer;transition:.15s;width:100%;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{background:#6d99ff}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+
+  .btn.ghost{
+    background:transparent;color:var(--txt);
+    border-color:var(--line);
+  }
+  .btn.ghost:hover{background:#1e2331;border-color:#3a4257}
+
+  .row{display:grid;gap:10px;grid-template-columns:1fr}
+  @media (min-width:480px){ .row{grid-template-columns:1fr 1fr} }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    max-width:min(92vw,420px);
+    padding:11px 16px;border-radius:11px;
+    background:#242a3a;border:1px solid #39415a;color:var(--txt);
+    font-size:.86rem;text-align:center;z-index:50;
+    box-shadow:0 12px 32px rgba(0,0,0,.45);
+    animation:pop .2s ease-out;
+  }
+  .toast.err{border-color:rgba(255,107,107,.45);background:#2c1d22}
+  @keyframes pop{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+  .foot{
+    margin-top:22px;text-align:center;
+    font-size:.75rem;color:#6b748a;line-height:1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="head">
+    <h1>PNG → <span>BMP</span> · 16×16 / 25×25</h1>
+    <p>Comprueba el tamaño de tus iconos PNG y guárdalos como BMP. Todo el proceso ocurre en tu dispositivo, sin subir nada a ningún servidor.</p>
+  </header>
+
+  <div class="drop" id="drop" role="button" tabindex="0" aria-label="Cargar imagen PNG">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+      <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    <strong>Toca para elegir una imagen</strong>
+    <span>o arrástrala aquí · también puedes pegar con Ctrl+V</span>
+  </div>
+  <input type="file" id="file" accept="image/png,image/*" hidden>
+
+  <section id="result" hidden>
+
+    <!-- Imagen original -->
+    <div class="card">
+      <div class="origRow">
+        <div class="thumb checker"><canvas id="origCanvas" width="72" height="72"></canvas></div>
+        <div class="meta">
+          <div class="fname" id="fname">—</div>
+          <div class="dims" id="dims">—</div>
+          <div id="badgeWrap"></div>
+        </div>
+      </div>
+      <p class="note" id="note"></p>
+    </div>
+
+    <!-- Opciones -->
+    <div class="card options">
+      <label class="chk">
+        <input type="checkbox" id="optSmooth">
+        <span>Suavizar al redimensionar</span>
+      </label>
+      <label class="chk">
+        <input type="checkbox" id="optAlpha" checked>
+        <span>BMP con transparencia (32 bits)</span>
+      </label>
+    </div>
+
+    <!-- Previsualizaciones -->
+    <div class="grid">
+      <article class="card panel">
+        <div class="pHead">
+          <h2>16 × 16</h2>
+          <span class="tag" id="tag16">—</span>
+        </div>
+        <div class="preview checker"><canvas id="cv16" width="16" height="16"></canvas></div>
+        <button class="btn" id="dl16" type="button">Guardar BMP 16×16</button>
+      </article>
+
+      <article class="card panel">
+        <div class="pHead">
+          <h2>25 × 25</h2>
+          <span class="tag" id="tag25">—</span>
+        </div>
+        <div class="preview checker"><canvas id="cv25" width="25" height="25"></canvas></div>
+        <button class="btn" id="dl25" type="button">Guardar BMP 25×25</button>
+      </article>
+    </div>
+
+    <div class="row">
+      <button class="btn ghost" id="dlBoth" type="button">Descargar ambas</button>
+      <button class="btn ghost" id="reset" type="button">Cargar otra imagen</button>
+    </div>
+
+  </section>
+
+  <p class="foot">
+    Los archivos BMP se generan localmente en tu navegador.<br>
+    En modo 24 bits la transparencia se rellena con fondo blanco.
+  </p>
+
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==================== Referencias ==================== */
+  const $ = (sel) => document.querySelector(sel);
+
+  const els = {
+    drop:       $('#drop'),
+    file:       $('#file'),
+    result:     $('#result'),
+    origCanvas: $('#origCanvas'),
+    fname:      $('#fname'),
+    dims:       $('#dims'),
+    badgeWrap:  $('#badgeWrap'),
+    note:       $('#note'),
+    optSmooth:  $('#optSmooth'),
+    optAlpha:   $('#optAlpha'),
+    cv16:       $('#cv16'),
+    cv25:       $('#cv25'),
+    tag16:      $('#tag16'),
+    tag25:      $('#tag25'),
+    dl16:       $('#dl16'),
+    dl25:       $('#dl25'),
+    dlBoth:     $('#dlBoth'),
+    reset:      $('#reset'),
+    toast:      $('#toast')
+  };
+
+  const SIZES = [16, 25];
+
+  /* Estado de la imagen cargada */
+  let src = null; // { img, name, w, h, url, isPng }
+  let toastTimer = null;
+
+  /* ==================== Utilidades de UI ==================== */
+
+  function toast(msg, isError) {
+    els.toast.textContent = msg;
+    els.toast.className = 'toast' + (isError ? ' err' : '');
+    els.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { els.toast.hidden = true; }, 3200);
+  }
+
+  function safeName(name) {
+    return (name || 'icono')
+      .replace(/\.[^.]+$/, '')          // quita extensión
+      .replace(/[^\w\-. ]+/g, '_')      // caracteres seguros
+      .trim() || 'icono';
+  }
+
+  /* ==================== Carga de archivos ==================== */
+
+  function handleFile(file) {
+    if (!file) return;
+
+    if (!file.type || file.type.indexOf('image/') !== 0) {
+      toast('El archivo no es una imagen válida.', true);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = function () {
+      if (!img.naturalWidth || !img.naturalHeight) {
+        URL.revokeObjectURL(url);
+        toast('No se pudo leer la imagen.', true);
+        return;
+      }
+      if (src && src.url) URL.revokeObjectURL(src.url);
+
+      src = {
+        img: img,
+        name: safeName(file.name),
+        w: img.naturalWidth,
+        h: img.naturalHeight,
+        url: url,
+        isPng: file.type === 'image/png'
+      };
+
+      render();
+    };
+
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      toast('No se pudo decodificar la imagen.', true);
+    };
+
+    img.src = url;
+  }
+
+  /* ==================== Redibujado de la interfaz ==================== */
+
+  function render() {
+    if (!src) return;
+
+    els.result.hidden = false;
+
+    /* --- Ficha de la imagen original --- */
+    els.fname.textContent = src.name + (src.isPng ? '.png' : '');
+    els.dims.textContent = src.w + ' × ' + src.h + ' píxeles';
+
+    const es16 = (src.w === 16 && src.h === 16);
+    const es25 = (src.w === 25 && src.h === 25);
+    const valido = es16 || es25;
+
+    if (valido) {
+      els.badgeWrap.innerHTML =
+        '<span class="badge ok">✓ Tamaño válido (' + src.w + '×' + src.h + ')</span>';
+      els.note.innerHTML =
+        'La imagen ya tiene uno de los tamaños admitidos, así que <b>se guardará sin redimensionar</b>, ' +
+        'píxel a píxel. También puedes generar la otra medida desde su panel.';
+    } else {
+      els.badgeWrap.innerHTML =
+        '<span class="badge warn">⚠ No es 16×16 ni 25×25</span>';
+      els.note.innerHTML =
+        'La imagen mide <b>' + src.w + '×' + src.h + '</b>. Se redimensionará a <b>16×16</b> y a <b>25×25</b>: ' +
+        'revisa las previsualizaciones antes de guardar.';
+    }
+
+    /* --- Miniatura original --- */
+    drawOriginalThumb();
+
+    /* --- Paneles de destino --- */
+    paintPanel(16, es16);
+    paintPanel(25, es25);
+  }
+
+  function drawOriginalThumb() {
+    const c = els.origCanvas;
+    const size = c.width; // 72
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+
+    // Encajar la imagen completa dentro de la miniatura
+    const s = Math.min(size / src.w, size / src.h);
+    const dw = Math.max(1, Math.round(src.w * s));
+    const dh = Math.max(1, Math.round(src.h * s));
+    const dx = Math.round((size - dw) / 2);
+    const dy = Math.round((size - dh) / 2);
+
+    // Imágenes pequeñas: sin suavizado (píxeles nítidos). Grandes: suavizado.
+    ctx.imageSmoothingEnabled = (src.w > size || src.h > size);
+    ctx.drawImage(src.img, dx, dy, dw, dh);
+  }
+
+  /* Crea un canvas fuera de pantalla con la imagen ya escalada al tamaño destino */
+  function buildTarget(size) {
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = els.optSmooth.checked;
+    if ('imageSmoothingQuality' in ctx) {
+      ctx.imageSmoothingQuality = 'high';
+    }
+
+    // Si el origen ya mide exactamente igual, el dibujado es 1:1 (sin pérdida)
+    ctx.drawImage(src.img, 0, 0, src.w, src.h, 0, 0, size, size);
+    return c;
+  }
+
+  function paintPanel(size, isOriginal) {
+    const canvas = (size === 16) ? els.cv16 : els.cv25;
+    const tag    = (size === 16) ? els.tag16 : els.tag25;
+
+    const tmp = buildTarget(size);
+
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(tmp, 0, 0);
+
+    if (isOriginal) {
+      tag.textContent = 'Original';
+      tag.className = 'tag ok';
+    } else {
+      tag.textContent = 'Redimensionado';
+      tag.className = 'tag warn';
+    }
+  }
+
+  /* ==================== Codificador BMP ==================== */
+
+  /**
+   * Convierte un ImageData en un Blob BMP.
+   * @param {ImageData} imgData  Datos RGBA
+   * @param {boolean} withAlpha  true = 32 bpp con alfa, false = 24 bpp (fondo blanco)
+   */
+  function encodeBMP(imgData, withAlpha) {
+    const w = imgData.width;
+    const h = imgData.height;
+    const data = imgData.data;
+
+    const bpp = withAlpha ? 32 : 24;
+    const rowSize = (((bpp * w) + 31) >> 5) << 2;   // filas alineadas a 4 bytes
+    const pixelSize = rowSize * h;
+    const offset = 14 + 40;                          // BITMAPFILEHEADER + BITMAPINFOHEADER
+    const fileSize = offset + pixelSize;
+
+    const buffer = new ArrayBuffer(fileSize);
+    const dv = new DataView(buffer);
+    const u8 = new Uint8Array(buffer);
+
+    /* ---- BITMAPFILEHEADER (14 bytes) ---- */
+    dv.setUint8(0, 0x42);            // 'B'
+    dv.setUint8(1, 0x4D);            // 'M'
+    dv.setUint32(2, fileSize, true);
+    dv.setUint16(6, 0, true);        // reservado
+    dv.setUint16(8, 0, true);        // reservado
+    dv.setUint32(10, offset, true);  // inicio de los datos de píxel
+
+    /* ---- BITMAPINFOHEADER (40 bytes) ---- */
+    dv.setUint32(14, 40, true);              // tamaño de la cabecera
+    dv.setInt32(18, w, true);                // ancho
+    dv.setInt32(22, h, true);                // alto (positivo = de abajo hacia arriba)
+    dv.setUint16(26, 1, true);               // planos
+    dv.setUint16(28, bpp, true);             // bits por píxel
+    dv.setUint32(30, 0, true);               // compresión BI_RGB
+    dv.setUint32(34, pixelSize, true);       // tamaño de la imagen
+    dv.setInt32(38, 2835, true);             // 72 ppp en píxeles/metro
+    dv.setInt32(42, 2835, true);
+    dv.setUint32(46, 0, true);               // colores usados
+    dv.setUint32(50, 0, true);               // colores importantes
+
+    /* ---- Datos de píxel (BGR / BGRA, de abajo hacia arriba) ---- */
+    for (let y = 0; y < h; y++) {
+      const srcY = h - 1 - y;                // BMP se escribe invertido
+      let p = offset + y * rowSize;
+
+      for (let x = 0; x < w; x++) {
+        const i = (srcY * w + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        if (withAlpha) {
+          u8[p++] = b;
+          u8[p++] = g;
+          u8[p++] = r;
+          u8[p++] = a;
+        } else {
+          // Composición sobre fondo blanco
+          const af = a / 255;
+          u8[p++] = Math.round(b * af + 255 * (1 - af));
+          u8[p++] = Math.round(g * af + 255 * (1 - af));
+          u8[p++] = Math.round(r * af + 255 * (1 - af));
+        }
+      }
+      // El relleno de la fila ya está a cero (ArrayBuffer se inicializa a 0)
+    }
+
+    return new Blob([buffer], { type: 'image/bmp' });
+  }
+
+  /* ==================== Descarga ==================== */
+
+  function downloadBMP(size) {
+    if (!src) return;
+
+    const canvas = buildTarget(size);
+    const ctx = canvas.getContext('2d');
+    let imgData;
+
+    try {
+      imgData = ctx.getImageData(0, 0, size, size);
+    } catch (e) {
+      toast('No se pudo leer el lienzo de la imagen.', true);
+      return;
+    }
+
+    const blob = encodeBMP(imgData, els.optAlpha.checked);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = src.name + '_' + size + 'x' + size + '.bmp';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+
+    toast('Guardado: ' + src.name + '_' + size + 'x' + size + '.bmp');
+  }
+
+  /* ==================== Eventos ==================== */
+
+  // Abrir el selector de archivos
+  els.drop.addEventListener('click', function () { els.file.click(); });
+  els.drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      els.file.click();
+    }
+  });
+
+  els.file.addEventListener('change', function () {
+    if (this.files && this.files[0]) handleFile(this.files[0]);
+    this.value = '';   // permite volver a elegir el mismo archivo
+  });
+
+  // Arrastrar y soltar
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    els.drop.addEventListener(ev, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      els.drop.classList.add('over');
+    });
+  });
+
+  ['dragleave', 'dragend'].forEach(function (ev) {
+    els.drop.addEventListener(ev, function (e) {
+      e.preventDefault();
+      els.drop.classList.remove('over');
+    });
+  });
+
+  els.drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    els.drop.classList.remove('over');
+
+    const dt = e.dataTransfer;
+    if (!dt) return;
+
+    // Buscar el primer archivo de imagen
+    let found = null;
+    if (dt.items && dt.items.length) {
+      for (let i = 0; i < dt.items.length; i++) {
+        const it = dt.items[i];
+        if (it.kind === 'file' && it.type.indexOf('image/') === 0) {
+          found = it.getAsFile();
+          break;
+        }
+      }
+    }
+    if (!found && dt.files && dt.files.length) found = dt.files[0];
+
+    if (found) handleFile(found);
+    else toast('Suelta un archivo de imagen.', true);
+  });
+
+  // Evitar que el navegador abra la imagen al soltarla fuera de la zona
+  ['dragover', 'drop'].forEach(function (ev) {
+    window.addEventListener(ev, function (e) {
+      if (!els.drop.contains(e.target)) e.preventDefault();
+    });
+  });
+
+  // Pegar desde el portapapeles
+  window.addEventListener('paste', function (e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) {
+        e.preventDefault();
+        handleFile(items[i].getAsFile());
+        return;
+      }
+    }
+  });
+
+  // Re-renderizar al cambiar las opciones
+  els.optSmooth.addEventListener('change', function () {
+    if (!src) return;
+    paintPanel(16, src.w === 16 && src.h === 16);
+    paintPanel(25, src.w === 25 && src.h === 25);
+  });
+
+  els.optAlpha.addEventListener('change', function () {
+    if (!src) return;
+    toast(this.checked ? 'BMP de 32 bits (conserva transparencia)'
+                       : 'BMP de 24 bits (fondo blanco)');
+  });
+
+  // Descargas
+  els.dl16.addEventListener('click', function () { downloadBMP(16); });
+  els.dl25.addEventListener('click', function () { downloadBMP(25); });
+
+  els.dlBoth.addEventListener('click', function () {
+    if (!src) return;
+    downloadBMP(16);
+    setTimeout(function () { downloadBMP(25); }, 500);
+  });
+
+  // Reiniciar
+  els.reset.addEventListener('click', function () {
+    if (src && src.url) URL.revokeObjectURL(src.url);
+    src = null;
+    els.result.hidden = true;
+    els.badgeWrap.innerHTML = '';
+    els.file.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+})();
+</script>
+</body>
+</html>
